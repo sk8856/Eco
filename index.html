@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Smart Dustbin — Municipal Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- Firebase v9 compat (works in plain HTML, no bundler needed) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
-/* ═══════════════════════════════════════════════
-   DESIGN SYSTEM — MISSION CONTROL AESTHETIC
-   ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   DESIGN SYSTEM — MISSION CONTROL
+═══════════════════════════════════════ */
 :root {
   --bg-base:       #080c10;
   --bg-surface:    #0d1117;
@@ -19,27 +21,22 @@
   --bg-card-hover: #161f29;
   --border:        #1e2d3d;
   --border-bright: #2a4060;
-
   --accent-green:  #00ff88;
   --accent-cyan:   #00d4ff;
   --accent-orange: #ff8c00;
   --accent-red:    #ff3a3a;
   --accent-yellow: #ffd700;
-
   --text-primary:  #e8f4f8;
   --text-secondary:#6b8aa0;
   --text-dim:      #3a5570;
-
   --font-display:  'Syne', sans-serif;
   --font-mono:     'Space Mono', monospace;
-
   --radius:        12px;
   --radius-sm:     8px;
   --glow-green:    0 0 20px rgba(0,255,136,0.25);
   --glow-red:      0 0 20px rgba(255,58,58,0.35);
   --glow-cyan:     0 0 20px rgba(0,212,255,0.25);
 }
-
 [data-theme="light"] {
   --bg-base:       #f0f4f8;
   --bg-surface:    #ffffff;
@@ -54,62 +51,719 @@
   --glow-red:      0 4px 20px rgba(255,58,58,0.15);
   --glow-cyan:     0 4px 20px rgba(0,150,200,0.15);
 }
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html { scroll-behavior: smooth; }
-
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
 body {
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-display);
-  min-height: 100vh;
-  overflow-x: hidden;
-  transition: background 0.3s, color 0.3s;
+  background:var(--bg-base); color:var(--text-primary);
+  font-family:var(--font-display); min-height:100vh;
+  overflow-x:hidden; transition:background 0.3s,color 0.3s;
 }
-
-/* ── Scanline texture overlay ── */
 body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,255,136,0.015) 2px,
-    rgba(0,255,136,0.015) 4px
-  );
-  pointer-events: none;
-  z-index: 0;
+  content:''; position:fixed; inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,
+    rgba(0,255,136,0.012) 2px,rgba(0,255,136,0.012) 4px);
+  pointer-events:none; z-index:0;
 }
-[data-theme="light"] body::before { display: none; }
+[data-theme="light"] body::before { display:none; }
 
-/* ═══════════ HEADER ═══════════ */
+/* ── HEADER ── */
 .header {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(8,12,16,0.92);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 68px;
+  position:sticky; top:0; z-index:100;
+  background:rgba(8,12,16,0.94); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem; display:flex; align-items:center;
+  justify-content:space-between; height:68px;
 }
-[data-theme="light"] .header {
-  background: rgba(255,255,255,0.92);
-}
-.header-logo {
-  display: flex; align-items: center; gap: 12px;
-}
+[data-theme="light"] .header { background:rgba(255,255,255,0.94); }
+
+.header-logo { display:flex; align-items:center; gap:12px; }
 .logo-icon {
-  width: 36px; height: 36px;
-  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  box-shadow: var(--glow-green);
-  animation: pulse-logo 3s ease-in-out infinite;
+  width:38px; height:38px;
+  background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan));
+  border-radius:10px; display:flex; align-items:center;
+  justify-content:center; font-size:20px;
+  animation:pulse-logo 3s ease-in-out infinite;
+}
+@keyframes pulse-logo {
+  0%,100%{box-shadow:var(--glow-green);}
+  50%{box-shadow:0 0 32px rgba(0,255,136,0.55);}
+}
+.logo-text { font-size:1.2rem; font-weight:800; letter-spacing:-0.02em; }
+.logo-sub  { font-size:0.62rem; color:var(--accent-green); font-family:var(--font-mono); letter-spacing:0.12em; text-transform:uppercase; display:block; margin-top:-2px; }
+
+.header-right { display:flex; align-items:center; gap:10px; }
+.live-badge {
+  display:flex; align-items:center; gap:6px;
+  background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.28);
+  border-radius:20px; padding:5px 14px;
+  font-family:var(--font-mono); font-size:0.68rem; color:var(--accent-green); letter-spacing:0.08em;
+}
+.live-dot { width:7px; height:7px; border-radius:50%; background:var(--accent-green); animation:blink 1.3s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+
+.icon-btn {
+  width:38px; height:38px; border-radius:10px;
+  border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-secondary); cursor:pointer; font-size:17px;
+  display:flex; align-items:center; justify-content:center; transition:all 0.2s;
+}
+.icon-btn:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); box-shadow:var(--glow-cyan); }
+
+/* ── CONN BAR ── */
+.conn-bar {
+  display:flex; align-items:center; gap:8px; padding:0.55rem 2rem;
+  background:var(--bg-surface); border-bottom:1px solid var(--border);
+  font-size:0.68rem; font-family:var(--font-mono); color:var(--text-dim);
+  flex-wrap:wrap; gap:8px;
+}
+.conn-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; animation:blink 1.5s infinite; }
+.conn-dot.connected    { background:var(--accent-green); box-shadow:0 0 8px var(--accent-green); }
+.conn-dot.connecting   { background:var(--accent-yellow); box-shadow:0 0 8px var(--accent-yellow); }
+.conn-dot.disconnected { background:var(--accent-red); box-shadow:0 0 8px var(--accent-red); animation:none; }
+
+/* ── LAYOUT ── */
+.main { padding:2rem; max-width:1400px; margin:0 auto; position:relative; z-index:1; }
+
+.section-label {
+  font-size:0.68rem; font-family:var(--font-mono); color:var(--accent-cyan);
+  letter-spacing:0.16em; text-transform:uppercase; margin-bottom:1rem;
+  display:flex; align-items:center; gap:10px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:linear-gradient(to right,var(--border),transparent); }
+
+/* ── STAT CARDS ── */
+.stat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:2rem; }
+@media(max-width:860px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:480px){ .stat-row{grid-template-columns:1fr;} }
+
+.stat-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:1.25rem 1.5rem;
+  position:relative; overflow:hidden; transition:transform 0.25s,border-color 0.25s;
+}
+.stat-card:hover { transform:translateY(-2px); border-color:var(--border-bright); }
+.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.stat-card.s-green::before  { background:linear-gradient(to right,var(--accent-green),transparent); }
+.stat-card.s-red::before    { background:linear-gradient(to right,var(--accent-red),transparent); }
+.stat-card.s-orange::before { background:linear-gradient(to right,var(--accent-orange),transparent); }
+.stat-card.s-cyan::before   { background:linear-gradient(to right,var(--accent-cyan),transparent); }
+.stat-lbl { font-size:0.63rem; font-family:var(--font-mono); color:var(--text-secondary); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.45rem; }
+.stat-val { font-size:2rem; font-weight:800; line-height:1; margin-bottom:0.2rem; }
+.stat-card.s-green  .stat-val { color:var(--accent-green); }
+.stat-card.s-red    .stat-val { color:var(--accent-red); }
+.stat-card.s-orange .stat-val { color:var(--accent-orange); }
+.stat-card.s-cyan   .stat-val { color:var(--accent-cyan); }
+.stat-sub { font-size:0.72rem; color:var(--text-dim); font-family:var(--font-mono); }
+
+/* ── BINS GRID ── */
+.bins-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+  gap:1.25rem; margin-bottom:2.5rem;
+}
+
+.bin-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:1.5rem;
+  transition:all 0.3s; animation:fadeUp 0.5s ease both;
+}
+.bin-card:hover { border-color:var(--border-bright); background:var(--bg-card-hover); transform:translateY(-3px); box-shadow:0 14px 40px rgba(0,0,0,0.35); }
+.bin-card.is-full { border-color:rgba(255,58,58,0.45); animation:fadeUp 0.5s ease both,redPulse 2s ease-in-out infinite; }
+
+@keyframes fadeUp  { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
+@keyframes redPulse{ 0%,100%{box-shadow:var(--glow-red);} 50%{box-shadow:0 0 42px rgba(255,58,58,0.55);} }
+
+.bin-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.2rem; }
+.bin-id   { font-size:0.62rem; font-family:var(--font-mono); color:var(--text-dim); letter-spacing:0.1em; text-transform:uppercase; }
+.bin-name { font-size:1rem; font-weight:700; margin-top:3px; }
+
+.badge { padding:3px 10px; border-radius:20px; font-size:0.62rem; font-family:var(--font-mono); font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
+.b-low    { background:rgba(0,255,136,0.1);  color:var(--accent-green);  border:1px solid rgba(0,255,136,0.3); }
+.b-medium { background:rgba(255,215,0,0.1);  color:var(--accent-yellow); border:1px solid rgba(255,215,0,0.3); }
+.b-high   { background:rgba(255,140,0,0.1);  color:var(--accent-orange); border:1px solid rgba(255,140,0,0.3); }
+.b-full   { background:rgba(255,58,58,0.1);  color:var(--accent-red);    border:1px solid rgba(255,58,58,0.3); }
+
+/* Circular gauge */
+.gauge-wrap { display:flex; justify-content:center; margin:0.75rem 0; }
+.gauge-container { position:relative; display:flex; align-items:center; justify-content:center; }
+.gauge-svg   { transform:rotate(-90deg); }
+.gauge-track { fill:none; stroke:var(--border); stroke-width:9; }
+.gauge-fill  { fill:none; stroke-width:9; stroke-linecap:round; transition:stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1),stroke 0.5s; }
+.gauge-center{ position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.gauge-pct  { font-size:1.65rem; font-weight:800; font-family:var(--font-mono); line-height:1; }
+.gauge-unit { font-size:0.58rem; color:var(--text-dim); font-family:var(--font-mono); letter-spacing:0.12em; margin-top:2px; }
+
+/* Sensor row */
+.sensor-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin:0.75rem 0 0.5rem; }
+.s-chip { background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.45rem 0.4rem; text-align:center; }
+.s-chip-lbl { font-size:0.54rem; font-family:var(--font-mono); color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; }
+.s-chip-val { font-size:0.78rem; font-family:var(--font-mono); font-weight:700; margin-top:3px; white-space:nowrap; }
+
+.upd-row { background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.5rem 0.75rem; margin-top:0.5rem; }
+.upd-lbl { font-size:0.55rem; font-family:var(--font-mono); color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; }
+.upd-val { font-size:0.76rem; font-family:var(--font-mono); font-weight:700; color:var(--text-primary); margin-top:2px; }
+
+/* ── TOAST ── */
+.toast-container { position:fixed; top:78px; right:18px; z-index:9999; display:flex; flex-direction:column; gap:10px; max-width:320px; }
+.toast {
+  background:var(--bg-card); border:1px solid rgba(255,58,58,0.38);
+  border-left:4px solid var(--accent-red); border-radius:var(--radius-sm);
+  padding:1rem 1.2rem; box-shadow:0 8px 32px rgba(0,0,0,0.45),var(--glow-red);
+  animation:slideIn 0.35s ease; display:flex; gap:12px; align-items:flex-start;
+}
+@keyframes slideIn { from{transform:translateX(110%);opacity:0;} to{transform:translateX(0);opacity:1;} }
+.toast-icon  { font-size:1.25rem; flex-shrink:0; padding-top:1px; }
+.toast-body  { flex:1; }
+.toast-title { font-size:0.8rem; font-weight:700; color:var(--accent-red); margin-bottom:4px; }
+.toast-msg   { font-size:0.73rem; color:var(--text-secondary); font-family:var(--font-mono); line-height:1.5; }
+.toast-x { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:15px; padding:0; flex-shrink:0; line-height:1; }
+
+/* ── NOTIF BANNER ── */
+.notif-banner {
+  background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(0,255,136,0.04));
+  border:1px solid rgba(0,212,255,0.28); border-radius:var(--radius);
+  padding:0.9rem 1.4rem; display:flex; align-items:center;
+  justify-content:space-between; margin-bottom:2rem; gap:1rem;
+}
+.notif-banner.hidden { display:none; }
+.notif-txt { font-size:0.82rem; color:var(--text-secondary); }
+.notif-txt strong { color:var(--accent-cyan); }
+.notif-btn {
+  background:var(--accent-cyan); color:#000; border:none;
+  padding:7px 16px; border-radius:8px; font-family:var(--font-display);
+  font-weight:700; font-size:0.78rem; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:opacity 0.2s;
+}
+.notif-btn:hover { opacity:0.84; }
+
+/* ── LOGS TABLE ── */
+.table-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:2rem; }
+.table-head { padding:0.9rem 1.4rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+.table-title { font-size:0.88rem; font-weight:700; }
+.clear-btn {
+  background:rgba(255,58,58,0.09); border:1px solid rgba(255,58,58,0.28);
+  color:var(--accent-red); padding:4px 12px; border-radius:6px;
+  font-size:0.68rem; font-family:var(--font-mono); cursor:pointer; transition:all 0.2s;
+}
+.clear-btn:hover { background:rgba(255,58,58,0.18); }
+.table-scroll { overflow-x:auto; max-height:340px; overflow-y:auto; }
+table  { width:100%; border-collapse:collapse; min-width:680px; }
+thead th {
+  background:var(--bg-surface); padding:0.7rem 1.2rem;
+  text-align:left; font-size:0.62rem; font-family:var(--font-mono);
+  color:var(--text-dim); letter-spacing:0.1em; text-transform:uppercase;
+  position:sticky; top:0; z-index:2; border-bottom:1px solid var(--border);
+}
+tbody tr { border-bottom:1px solid var(--border); transition:background 0.15s; }
+tbody tr:hover { background:var(--bg-card-hover); }
+tbody tr:last-child { border-bottom:none; }
+tbody td { padding:0.65rem 1.2rem; font-size:0.76rem; font-family:var(--font-mono); color:var(--text-secondary); }
+tbody td:first-child { font-size:0.68rem; color:var(--text-dim); }
+.log-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.62rem; font-weight:700; letter-spacing:0.04em; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:var(--bg-base); }
+::-webkit-scrollbar-thumb { background:var(--border-bright); border-radius:3px; }
+
+/* ── EMPTY STATE ── */
+.empty { text-align:center; padding:3rem 1rem; color:var(--text-dim); font-family:var(--font-mono); font-size:0.82rem; }
+.empty .ico { font-size:2.8rem; margin-bottom:0.75rem; }
+
+/* ── FOOTER ── */
+.footer { text-align:center; padding:1.75rem 1rem; color:var(--text-dim); font-size:0.66rem; font-family:var(--font-mono); border-top:1px solid var(--border); margin-top:0.5rem; line-height:2; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-icon">🗑️</div>
+    <div>
+      <div class="logo-text">SmartBin</div>
+      <span class="logo-sub">Municipal Control</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+    <button class="icon-btn" id="btnTheme" title="Toggle dark/light">🌙</button>
+    <button class="icon-btn" id="btnRefresh" title="Force refresh">↺</button>
+  </div>
+</header>
+
+<!-- CONNECTION STATUS BAR -->
+<div class="conn-bar">
+  <div class="conn-dot connecting" id="connDot"></div>
+  <span id="connText">Connecting to Firebase…</span>
+  <span style="margin-left:auto" id="syncText">Last sync: —</span>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- Notification permission banner -->
+  <div class="notif-banner" id="notifBanner">
+    <div class="notif-txt">🔔 Enable <strong>browser notifications</strong> to get alerts when a bin is full — even when tab is in background.</div>
+    <button class="notif-btn" id="btnNotif">Enable Alerts</button>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="section-label">System Overview</div>
+  <div class="stat-row">
+    <div class="stat-card s-green">
+      <div class="stat-lbl">Total Bins</div>
+      <div class="stat-val" id="sTot">—</div>
+      <div class="stat-sub">monitored</div>
+    </div>
+    <div class="stat-card s-red">
+      <div class="stat-lbl">Full Bins</div>
+      <div class="stat-val" id="sFull">—</div>
+      <div class="stat-sub">need collection</div>
+    </div>
+    <div class="stat-card s-orange">
+      <div class="stat-lbl">High Level</div>
+      <div class="stat-val" id="sHigh">—</div>
+      <div class="stat-sub">≥ 70 % filled</div>
+    </div>
+    <div class="stat-card s-cyan">
+      <div class="stat-lbl">Avg Fill</div>
+      <div class="stat-val" id="sAvg">—</div>
+      <div class="stat-sub">across all bins</div>
+    </div>
+  </div>
+
+  <!-- BINS -->
+  <div class="section-label">Bin Status</div>
+  <div class="bins-grid" id="binsGrid">
+    <div class="empty" style="grid-column:1/-1">
+      <div class="ico">📡</div>Waiting for ESP32 data from Firebase…
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div class="section-label">Activity Log</div>
+  <div class="table-card">
+    <div class="table-head">
+      <div class="table-title">Recent Events</div>
+      <button class="clear-btn" id="btnClear">Clear Logs</button>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Bin ID</th>
+            <th>Location</th>
+            <th>Fill %</th>
+            <th>IR Sensor</th>
+            <th>Lid</th>
+            <th>Status</th>
+            <th>Event</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="8"><div class="empty" style="padding:1.5rem">No events yet — events appear automatically when ESP32 sends data</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  SmartBin Municipal Dashboard &nbsp;•&nbsp;
+  Firebase: <span style="color:var(--accent-green)">smartdust-28990</span> &nbsp;•&nbsp;
+  HC-SR04 + IR Sensor + Servo &nbsp;•&nbsp;
+  Auto-refresh every 10 s
+</footer>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════
+   🔥 YOUR FIREBASE CONFIG — ALREADY SET UP ✅
+══════════════════════════════════════════════ */
+const FB_CFG = {
+  apiKey:            "AIzaSyCbhML8ViTt9cpF0DlvuZmYfnN6J80oM9E",
+  authDomain:        "smartdust-28990.firebaseapp.com",
+  databaseURL:       "https://smartdust-28990-default-rtdb.firebaseio.com",
+  projectId:         "smartdust-28990",
+  storageBucket:     "smartdust-28990.firebasestorage.app",
+  messagingSenderId: "394921700886",
+  appId:             "1:394921700886:web:fe73b14bd7733b4262cf37"
+};
+
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let binsData    = {};          // live snapshot of all bins
+let logs        = [];          // activity log entries (max 100)
+let alertedBins = new Set();   // bins that have already triggered an alert
+let db;                        // Firebase database reference
+
+/* ══════════════════════════════════════════════
+   INIT FIREBASE
+══════════════════════════════════════════════ */
+function initFirebase() {
+  try {
+    firebase.initializeApp(FB_CFG);
+    db = firebase.database();
+    setConnStatus('connecting', 'Connecting to Firebase…');
+    startListening();
+  } catch (err) {
+    setConnStatus('disconnected', 'Firebase init error: ' + err.message);
+    console.error('Firebase init error:', err);
+  }
+}
+
+/* ── Listen to ALL bin data in real-time ── */
+function startListening() {
+  db.ref('/').on('value',
+    snap => {
+      const raw = snap.val();
+      if (!raw) {
+        setConnStatus('connected', 'Connected — no bin data yet');
+        return;
+      }
+      // Collect only keys that start with "bin_"
+      binsData = {};
+      Object.entries(raw).forEach(([k, v]) => {
+        if (k.startsWith('bin_') && v && typeof v === 'object') {
+          binsData[k] = v;
+        }
+      });
+      setConnStatus('connected', '🔥 Connected to Firebase — smartdust-28990');
+      renderAll();
+    },
+    err => {
+      setConnStatus('disconnected', '❌ ' + err.message);
+      console.error('Firebase listen error:', err);
+    }
+  );
+}
+
+/* ══════════════════════════════════════════════
+   RENDER EVERYTHING
+══════════════════════════════════════════════ */
+function renderAll() {
+  const keys = Object.keys(binsData).sort();
+  updateStats(keys);
+  renderBins(keys);
+  document.getElementById('syncText').textContent =
+    'Last sync: ' + new Date().toLocaleTimeString();
+}
+
+/* ── Stats row ── */
+function updateStats(keys) {
+  const fills = keys.map(k => clampFill(binsData[k].fill_percent));
+  document.getElementById('sTot').textContent  = keys.length || '0';
+  document.getElementById('sFull').textContent = fills.filter(f => f >= 90).length;
+  document.getElementById('sHigh').textContent = fills.filter(f => f >= 70 && f < 90).length;
+  document.getElementById('sAvg').textContent  = fills.length
+    ? Math.round(fills.reduce((a, b) => a + b, 0) / fills.length) + '%'
+    : '—';
+}
+
+/* ── Bin cards ── */
+function renderBins(keys) {
+  const grid = document.getElementById('binsGrid');
+
+  if (!keys.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="ico">📡</div>
+      No bins found — make sure ESP32 is online and writing to Firebase.
+    </div>`;
+    return;
+  }
+
+  // Preserve scroll position
+  const prev = grid.scrollTop;
+  grid.innerHTML = '';
+
+  keys.forEach((binId, idx) => {
+    const bin  = binsData[binId];
+    const fill = clampFill(bin.fill_percent);
+    const div  = document.createElement('div');
+    div.className = 'bin-card' + (fill >= 90 ? ' is-full' : '');
+    div.style.animationDelay = (idx * 0.06) + 's';
+    div.innerHTML = buildCard(binId, bin, fill);
+    grid.appendChild(div);
+    animateGauge(div, fill);
+    handleAlerts(binId, bin, fill);
+  });
+
+  grid.scrollTop = prev;
+}
+
+/* ── Build one bin card HTML ── */
+function buildCard(binId, bin, fill) {
+  const { col, badgeClass } = style(fill);
+  const circ    = 2 * Math.PI * 52;           // circumference
+  const irDet   = bin.ir_status  === 'Detected';
+  const lidOpen = bin.lid_status === 'Open';
+  const irCol   = irDet   ? 'var(--accent-cyan)'   : 'var(--text-dim)';
+  const lidCol  = lidOpen ? 'var(--accent-orange)' : 'var(--accent-green)';
+
+  return `
+    <div class="bin-head">
+      <div>
+        <div class="bin-id">${binId}</div>
+        <div class="bin-name">${esc(bin.name) || 'Unknown Location'}</div>
+      </div>
+      <span class="badge ${badgeClass}">${esc(bin.status) || '—'}</span>
+    </div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-container">
+        <svg class="gauge-svg" width="124" height="124" viewBox="0 0 124 124">
+          <circle class="gauge-track" cx="62" cy="62" r="52"/>
+          <circle class="gauge-fill"
+            cx="62" cy="62" r="52"
+            stroke="${col}"
+            stroke-dasharray="${circ}"
+            stroke-dashoffset="${circ}"
+            data-fill="${fill}"
+            data-circ="${circ}"/>
+        </svg>
+        <div class="gauge-center">
+          <div class="gauge-pct" style="color:${col}">${fill}%</div>
+          <div class="gauge-unit">FILLED</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sensor-row">
+      <div class="s-chip">
+        <div class="s-chip-lbl">IR Sensor</div>
+        <div class="s-chip-val" style="color:${irCol}">${irDet ? '🖐️ Det.' : '✋ Clear'}</div>
+      </div>
+      <div class="s-chip">
+        <div class="s-chip-lbl">Lid</div>
+        <div class="s-chip-val" style="color:${lidCol}">${lidOpen ? '🔓 Open' : '🔒 Closed'}</div>
+      </div>
+      <div class="s-chip">
+        <div class="s-chip-lbl">Distance</div>
+        <div class="s-chip-val">${bin.distance_cm != null ? bin.distance_cm + ' cm' : '—'}</div>
+      </div>
+    </div>
+
+    <div class="upd-row">
+      <div class="upd-lbl">Last Updated</div>
+      <div class="upd-val">${esc(bin.last_updated) || '—'}</div>
+    </div>`;
+}
+
+/* ── Animate the gauge ring smoothly ── */
+function animateGauge(card, fill) {
+  requestAnimationFrame(() => {
+    const ring = card.querySelector('.gauge-fill');
+    if (!ring) return;
+    const circ   = parseFloat(ring.getAttribute('data-circ'));
+    const offset = circ - (fill / 100) * circ;
+    setTimeout(() => { ring.style.strokeDashoffset = offset; }, 80);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   ALERTS & NOTIFICATIONS
+══════════════════════════════════════════════ */
+function handleAlerts(binId, bin, fill) {
+  if (fill >= 90 && !alertedBins.has(binId)) {
+    alertedBins.add(binId);
+    showToast(bin.name || binId, fill);
+    pushBrowserNotif(binId, bin, fill);
+    addLog(binId, bin, fill, '🚨 FULL ALERT — Collection Required');
+  }
+  else if (fill < 20 && alertedBins.has(binId)) {
+    alertedBins.delete(binId);
+    addLog(binId, bin, fill, '✅ Bin Emptied — Alert Cleared');
+  }
+  else if (fill >= 70 && fill < 90) {
+    addLog(binId, bin, fill, '⚠️ Level High — Monitor Closely');
+  }
+  else if (bin.ir_status === 'Detected') {
+    addLog(binId, bin, fill, '🖐️ Hand Detected — Lid Opened');
+  }
+}
+
+function showToast(name, fill) {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `
+    <div class="toast-icon">🚨</div>
+    <div class="toast-body">
+      <div class="toast-title">Bin Full — Action Required!</div>
+      <div class="toast-msg">${esc(name)} is ${fill}% full.<br>Please schedule waste collection.</div>
+    </div>
+    <button class="toast-x" onclick="this.closest('.toast').remove()">✕</button>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 9000);
+}
+
+/* Safe browser notification — no crash in iframes */
+function pushBrowserNotif(binId, bin, fill) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    new Notification('🚨 SmartBin Full!', {
+      body: `${bin.name || binId} is ${fill}% full.\nPlease collect waste.`,
+      tag:  binId,
+      requireInteraction: true
+    });
+  } catch (e) {
+    console.warn('Notification blocked by environment:', e.message);
+  }
+}
+
+/* ── Notification permission banner ── */
+function initNotifBanner() {
+  const banner = document.getElementById('notifBanner');
+  if (!('Notification' in window))           { banner.classList.add('hidden'); return; }
+  if (Notification.permission === 'granted') { banner.classList.add('hidden'); return; }
+  if (Notification.permission === 'denied')  { banner.classList.add('hidden'); return; }
+
+  document.getElementById('btnNotif').addEventListener('click', () => {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') {
+        banner.classList.add('hidden');
+        try {
+          new Notification('✅ SmartBin Alerts Enabled!', {
+            body: 'You will be notified when a bin is full.'
+          });
+        } catch (e) { /* blocked in some environments */ }
+      }
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════
+   ACTIVITY LOG
+══════════════════════════════════════════════ */
+function addLog(binId, bin, fill, event) {
+  // Deduplicate: skip if same binId + event was logged in last 15s
+  const key = binId + event;
+  const now  = Date.now();
+  if (addLog._cache && addLog._cache[key] && now - addLog._cache[key] < 15000) return;
+  if (!addLog._cache) addLog._cache = {};
+  addLog._cache[key] = now;
+
+  logs.unshift({
+    time:  new Date().toLocaleString(),
+    binId, name: bin.name || binId,
+    fill,  ir:   bin.ir_status  || '—',
+    lid:   bin.lid_status || '—',
+    status: bin.status    || statusLabel(fill),
+    event
+  });
+  if (logs.length > 100) logs.pop();
+  renderLogs();
+}
+
+function renderLogs() {
+  const tbody = document.getElementById('logBody');
+  if (!logs.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty" style="padding:1.5rem">No events yet</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = logs.map(l => {
+    const { col, badgeClass } = style(l.fill);
+    const irCol  = l.ir  === 'Detected' ? 'var(--accent-cyan)'   : 'var(--text-dim)';
+    const lidCol = l.lid === 'Open'     ? 'var(--accent-orange)' : 'var(--text-dim)';
+    const evCol  = l.event.includes('FULL')    ? 'var(--accent-red)'    :
+                   l.event.includes('High')    ? 'var(--accent-orange)' :
+                   l.event.includes('Opened')  ? 'var(--accent-cyan)'   :
+                   l.event.includes('Emptied') ? 'var(--accent-green)'  :
+                   'var(--text-secondary)';
+    return `<tr>
+      <td>${l.time}</td>
+      <td style="color:var(--text-primary)">${l.binId}</td>
+      <td>${l.name}</td>
+      <td style="color:${col};font-weight:700">${l.fill}%</td>
+      <td style="color:${irCol}">${l.ir}</td>
+      <td style="color:${lidCol}">${l.lid}</td>
+      <td><span class="log-badge ${badgeClass}">${l.status}</span></td>
+      <td style="color:${evCol}">${l.event}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  logs = []; alertedBins.clear();
+  if (addLog._cache) addLog._cache = {};
+  renderLogs();
+});
+
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+function clampFill(v) { return Math.min(100, Math.max(0, parseInt(v) || 0)); }
+
+function style(fill) {
+  if (fill >= 90) return { col:'var(--accent-red)',    badgeClass:'b-full'   };
+  if (fill >= 70) return { col:'var(--accent-orange)', badgeClass:'b-high'   };
+  if (fill >= 40) return { col:'var(--accent-yellow)', badgeClass:'b-medium' };
+  return                 { col:'var(--accent-green)',  badgeClass:'b-low'    };
+}
+
+function statusLabel(fill) {
+  if (fill >= 90) return 'FULL';
+  if (fill >= 70) return 'High';
+  if (fill >= 40) return 'Medium';
+  return 'Low';
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setConnStatus(state, msg) {
+  const dot  = document.getElementById('connDot');
+  const text = document.getElementById('connText');
+  dot.className  = 'conn-dot ' + state;
+  text.textContent = msg;
+}
+
+/* ══════════════════════════════════════════════
+   THEME TOGGLE
+══════════════════════════════════════════════ */
+document.getElementById('btnTheme').addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('btnTheme').textContent = isDark ? '☀️' : '🌙';
+});
+
+/* ══════════════════════════════════════════════
+   MANUAL REFRESH BUTTON
+══════════════════════════════════════════════ */
+document.getElementById('btnRefresh').addEventListener('click', () => {
+  if (!db) return;
+  setConnStatus('connecting', 'Refreshing…');
+  db.ref('/').once('value', snap => {
+    const raw = snap.val() || {};
+    binsData = {};
+    Object.entries(raw).forEach(([k, v]) => {
+      if (k.startsWith('bin_') && v && typeof v === 'object') binsData[k] = v;
+    });
+    setConnStatus('connected', '🔥 Connected to Firebase — smartdust-28990');
+    renderAll();
+  });
+});
+
+/* ══════════════════════════════════════════════
+   START
+══════════════════════════════════════════════ */
+initNotifBanner();
+initFirebase();
+</script>
+</body>
+</html>
 }
 @keyframes pulse-logo {
   0%,100% { box-shadow: var(--glow-green); }
